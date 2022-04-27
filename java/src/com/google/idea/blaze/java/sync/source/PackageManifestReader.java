@@ -26,10 +26,12 @@ import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import com.google.common.util.concurrent.ListeningExecutorService;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.devtools.intellij.aspect.Common;
 import com.google.devtools.intellij.ideinfo.IntellijIdeInfo.JavaSourcePackage;
 import com.google.devtools.intellij.ideinfo.IntellijIdeInfo.PackageManifest;
 import com.google.idea.blaze.base.async.FutureUtil;
+import com.google.idea.blaze.base.async.FutureUtil.FutureResult;
 import com.google.idea.blaze.base.command.buildresult.BlazeArtifact;
 import com.google.idea.blaze.base.command.buildresult.OutputArtifact;
 import com.google.idea.blaze.base.command.buildresult.RemoteOutputArtifact;
@@ -40,9 +42,11 @@ import com.google.idea.blaze.base.ideinfo.ArtifactLocation;
 import com.google.idea.blaze.base.ideinfo.TargetKey;
 import com.google.idea.blaze.base.io.InputStreamProvider;
 import com.google.idea.blaze.base.prefetch.PrefetchService;
+import com.google.idea.blaze.base.prefetch.PrefetchStats;
 import com.google.idea.blaze.base.prefetch.RemoteArtifactPrefetcher;
 import com.google.idea.blaze.base.scope.BlazeContext;
 import com.google.idea.blaze.base.scope.output.IssueOutput;
+import com.google.idea.blaze.base.scope.scopes.NetworkTrafficTrackingScope.NetworkTrafficUsedOutput;
 import com.google.idea.blaze.base.scope.scopes.TimingScope.EventType;
 import com.google.idea.blaze.base.sync.workspace.ArtifactLocationDecoder;
 import com.intellij.openapi.components.ServiceManager;
@@ -108,19 +112,31 @@ public class PackageManifestReader {
             .filter(a -> findArtifactInCache(project, a) == null)
             .collect(toImmutableList());
 
-    ListenableFuture<?> fetchRemoteArtifactFuture =
-        RemoteArtifactPrefetcher.getInstance().downloadArtifacts(project.getName(), toDownload);
-    ListenableFuture<?> fetchFuture =
-        PrefetchService.getInstance()
-            .prefetchFiles(BlazeArtifact.getLocalFiles(diff.getUpdatedOutputs()), true, false);
+    // Convert both futures to a Long (of network bytes consumed by the operation) for convenient
+    // summing below.
+    ListenableFuture<Long> fetchRemoteArtifactFuture =
+        Futures.transform(
+            RemoteArtifactPrefetcher.getInstance().downloadArtifacts(project.getName(), toDownload),
+            unused -> toDownload.stream().mapToLong(RemoteOutputArtifact::getLength).sum(),
+            MoreExecutors.directExecutor());
+    ListenableFuture<Long> fetchFuture =
+        Futures.transform(
+            PrefetchService.getInstance()
+                .prefetchFiles(BlazeArtifact.getLocalFiles(diff.getUpdatedOutputs()), true, false),
+            PrefetchStats::bytesPrefetched,
+            MoreExecutors.directExecutor());
 
-    if (!FutureUtil.waitForFuture(
-            context, Futures.allAsList(fetchRemoteArtifactFuture, fetchFuture))
-        .timed("FetchPackageManifests", EventType.Prefetching)
-        .withProgressMessage("Reading package manifests...")
-        .run()
-        .success()) {
+    FutureResult<List<Long>> result =
+        FutureUtil.waitForFuture(context, Futures.allAsList(fetchRemoteArtifactFuture, fetchFuture))
+            .timed("FetchPackageManifests", EventType.Prefetching)
+            .withProgressMessage("Reading package manifests...")
+            .run();
+    if (!result.success()) {
       return null;
+    }
+    long bytesConsumed = result.result().stream().mapToLong(Long::longValue).sum();
+    if (bytesConsumed > 0) {
+      context.output(new NetworkTrafficUsedOutput(bytesConsumed, "packagemanifest"));
     }
 
     List<ListenableFuture<Void>> futures = Lists.newArrayList();

@@ -20,6 +20,7 @@ import com.google.idea.blaze.base.async.executor.ProgressiveTaskWithProgressIndi
 import com.google.idea.blaze.base.command.BlazeInvocationContext.ContextType;
 import com.google.idea.blaze.base.ideinfo.TargetKey;
 import com.google.idea.blaze.base.issueparser.BlazeIssueParser;
+import com.google.idea.blaze.base.model.BlazeProjectData;
 import com.google.idea.blaze.base.model.primitives.TargetExpression;
 import com.google.idea.blaze.base.model.primitives.WorkspacePath;
 import com.google.idea.blaze.base.model.primitives.WorkspaceRoot;
@@ -28,12 +29,15 @@ import com.google.idea.blaze.base.scope.BlazeScope;
 import com.google.idea.blaze.base.scope.Scope;
 import com.google.idea.blaze.base.scope.output.PrintOutput;
 import com.google.idea.blaze.base.scope.output.PrintOutput.OutputType;
+import com.google.idea.blaze.base.scope.output.SummaryOutput;
+import com.google.idea.blaze.base.scope.output.SummaryOutput.Prefix;
 import com.google.idea.blaze.base.scope.scopes.ProgressIndicatorScope;
 import com.google.idea.blaze.base.scope.scopes.ToolWindowScope;
 import com.google.idea.blaze.base.settings.Blaze;
 import com.google.idea.blaze.base.settings.BlazeImportSettingsManager;
 import com.google.idea.blaze.base.settings.BlazeUserSettings;
 import com.google.idea.blaze.base.settings.BlazeUserSettings.FocusBehavior;
+import com.google.idea.blaze.base.sync.data.BlazeProjectDataManager;
 import com.google.idea.blaze.base.sync.projectview.SyncDirectoriesWarning;
 import com.google.idea.blaze.base.sync.status.BlazeSyncStatus;
 import com.google.idea.blaze.base.toolwindow.Task;
@@ -94,6 +98,23 @@ public class BlazeSyncManager {
                                       return;
                                     }
 
+                                    BlazeProjectData oldProjectData =
+                                        BlazeProjectDataManager.getInstance(project)
+                                            .getBlazeProjectData();
+                                    SyncProjectState projectState =
+                                        ProjectStateSyncTask.collectProjectState(project, context);
+                                    boolean forceFullSync = false;
+                                    // Force full sync if active language is added in project view
+                                    if (oldProjectData != null && projectState != null) {
+                                      forceFullSync =
+                                          !oldProjectData
+                                              .getWorkspaceLanguageSettings()
+                                              .getActiveLanguages()
+                                              .containsAll(
+                                                  projectState
+                                                      .getLanguageSettings()
+                                                      .getActiveLanguages());
+                                    }
                                     BlazeSyncParams initialUpdateSyncParams =
                                         BlazeSyncParams.builder()
                                             .setTitle("Initial directory update")
@@ -104,7 +125,23 @@ public class BlazeSyncManager {
                                     executeTask(project, initialUpdateSyncParams, context);
 
                                     if (!context.isCancelled()) {
-                                      executeTask(project, syncParams, context);
+                                      if (forceFullSync
+                                          && syncParams.syncMode() != SyncMode.NO_BUILD) {
+                                        context.output(
+                                            SummaryOutput.output(
+                                                Prefix.INFO,
+                                                "Active languages changed in project view; forcing"
+                                                    + " a full sync"));
+                                        executeTask(
+                                            project,
+                                            syncParams.toBuilder()
+                                                .setSyncMode(SyncMode.FULL)
+                                                .setTitle("Full Sync")
+                                                .build(),
+                                            context);
+                                      } else {
+                                        executeTask(project, syncParams, context);
+                                      }
                                     }
                                   }));
             });

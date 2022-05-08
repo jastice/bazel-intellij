@@ -164,8 +164,20 @@ abstract class BlazeAndroidTestRunContextBase implements BlazeAndroidRunContext 
   }
 
   @SuppressWarnings({"rawtypes"}) // Raw type from upstream.
+  // @Override #api212
   @Nullable
-  @Override
+  public LaunchTask getApplicationLaunchTask(
+      LaunchOptions launchOptions,
+      @Nullable Integer userId,
+      String contributorsAmStartOptions,
+      LaunchStatus launchStatus)
+      throws ExecutionException {
+    return getApplicationLaunchTask(
+        launchOptions, userId, contributorsAmStartOptions, null, null, launchStatus);
+  }
+
+  @SuppressWarnings({"rawtypes"}) // Raw type from upstream.
+  @Nullable
   public LaunchTask getApplicationLaunchTask(
       LaunchOptions launchOptions,
       @Nullable Integer userId,

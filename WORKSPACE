@@ -31,6 +31,14 @@ http_archive(
     url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIC/2022.1/ideaIC-2022.1.zip",
 )
 
+# The plugin api for intellij_ce_2022_2. This is required to build IJwB and run integration tests.
+http_archive(
+    name = "intellij_ce_2022_2",
+    build_file = "@//intellij_platform_sdk:BUILD.idea222",
+    # sha256 = "0000000000000000000000000000000000000000000000000000000000000000", #FIXME222
+    url = "https://www.jetbrains.com/intellij-repository/nightly/com/jetbrains/intellij/idea/ideaIC/222-SNAPSHOT/ideaIC-222-SNAPSHOT.zip", # FIXME222 change to fixed EAP on release
+)
+
 # The plugin api for IntelliJ UE 2021.2. This is required to run UE-specific
 # integration tests.
 http_archive(
@@ -56,6 +64,15 @@ http_archive(
     url = "https://www.jetbrains.com/intellij-repository/releases/com/jetbrains/intellij/idea/ideaIU/2022.1/ideaIU-2022.1.zip",
 )
 
+# The plugin api for intellij_ue_2022_2. This is required to run UE-specific integration tests.
+http_archive(
+    name = "intellij_ue_2022_2",
+    build_file = "@//intellij_platform_sdk:BUILD.ue222",
+    # sha256 = "aaf76eb2ba9ce09bac2d0731c97f8bafba6b3d58b66ed099359226855d388f4c", #FIXME222
+    url = "https://buildserver.labs.intellij.net/guestAuth/repository/download/ijplatform_master_Idea_Installers/183796899:id/ideaIU-222.2270.portable.zip", # FIXME222 change to fixed EAP on release
+
+)
+
 # The plugin api for clion_2021_2. This is required to build CLwB, and run integration tests.
 http_archive(
     name = "clion_2021_2",
@@ -79,6 +96,15 @@ http_archive(
     sha256 = "a8ad8db6362d60a5ce60a7552110887dbd12e8420c839c368b55808b68dea38b",
     url = "https://download.jetbrains.com/cpp/CLion-2022.1.tar.gz",
 )
+
+# The plugin api for clion_2022_1. This is required to build CLwB\, and run integration tests.
+http_archive(
+    name = "clion_2022_2",
+    build_file = "@//intellij_platform_sdk:BUILD.clion222",
+#    sha256 = "0000000000000000000000000000000000000000000000000000000000000000", #FIXME222
+    url = "https://www.jetbrains.com/intellij-repository/nightly/com/jetbrains/intellij/clion/clion/222-SNAPSHOT/clion-222-SNAPSHOT.zip", # FIXME222
+)
+
 
 _PYTHON_CE_BUILD_FILE = """
 java_import(
@@ -121,6 +147,14 @@ http_archive(
     url = "https://plugins.jetbrains.com/files/7322/167535/python-ce-221.5080.210.zip",
 )
 
+# Python plugin for IntelliJ CE. Required at compile-time for python-specific features.
+http_archive(
+    name = "python_2022_2",
+    build_file_content = _PYTHON_CE_BUILD_FILE,
+    # sha256 = "0000000000000000000000000000000000000000000000000000000000000000", #FIXME222
+    url = "https://buildserver.labs.intellij.net/guestAuth/repository/download/ijplatform_master_Idea_Installers/183796899:id/IC-plugins/auto-uploading/python-ce-222.2270.zip", # FIXME222
+)
+
 _GO_BUILD_FILE = """
 java_import(
     name = "go",
@@ -153,6 +187,14 @@ http_archive(
     url = "https://plugins.jetbrains.com/files/9568/167522/go-221.5080.210.zip",
 )
 
+# Go plugin for IntelliJ UE. Required at compile-time for Bazel integration.
+http_archive(
+    name = "go_2022_2",
+    build_file_content = _GO_BUILD_FILE,
+    # sha256 = "0000000000000000000000000000000000000000000000000000000000000000", #FIXME222
+    url = "https://buildserver.labs.intellij.net/guestAuth/repository/download/ijplatform_master_Idea_Installers/183796899:id/IU-plugins/auto-uploading/go-222.2270.zip", # FIXME222
+)
+
 _SCALA_BUILD_FILE = """
 java_import(
     name = "scala",
@@ -183,6 +225,16 @@ http_archive(
     build_file_content = _SCALA_BUILD_FILE,
     sha256 = "6a8cfc87c9485f48bd13856b5f4819a020f77c2a90f38d7128e026fc323330a7",
     url = "https://plugins.jetbrains.com/files/1347/167520/scala-intellij-bin-2022.1.13.zip",
+)
+
+# Scala plugin for IntelliJ CE. Required at compile-time for scala-specific features.
+http_archive(
+    name = "scala_2022_2",
+    build_file_content = _SCALA_BUILD_FILE,
+    # sha256 = "a6a2319f91d5e6a6828fb2acdda6715362a83f5363751eda21b255cb41a2e5e1",
+    # url = "https://buildserver.labs.intellij.net/repository/download/Scala_Idea20222_Package_Trunk/183165657:id/scala-intellij-bin-2022.2.272.zip",
+#    url = "https://plugins.jetbrains.com/files/1347/167520/scala-intellij-bin-2022.1.13.zip",
+    url = "https://buildserver.labs.intellij.net/guestAuth/repository/download/Scala_Idea20222_Package_Trunk/183786603:id/scala-intellij-bin-2022.2.289.zip",
 )
 
 # The plugin api for android_studio_2021_2. This is required to build ASwB,
